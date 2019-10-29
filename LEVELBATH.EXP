@@ -1,0 +1,21 @@
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '\/BathFB' *)
+(* @OBJECTFLAGS := '0, 8' *)
+TYPE LevelBath :
+STRUCT
+    BathTop:        BOOL;       (*Верхний уровень в ванне*)
+    BathMiddle:     BOOL;       (*Средний уровень в ванне*)
+    BathLower:      BOOL;       (*Нижний уровень в ванне*)
+    TankTop:        BOOL;       (*Верхний уровень в баке*)
+    TankMiddle:     BOOL;       (*Средний уровень в баке*)
+    TankLower:      BOOL;       (*Нижний уровень в баке*)
+    USBlock:        BOOL;       (*Уровень блокировки уровня ультразвука*)
+    USBlockTop:     BOOL;       (*Уровень блокировки верхнего уровня ультразвука*)
+    WarmBlock:      BOOL;       (*Уровень блокировки нагрева*)
+    PumpBlock:      BOOL;       (*Уровень блокировки насоса*)
+    BarbBlock:      BOOL;       (*Уровень блокировки барботажа*)
+    SkimerBlock:    BOOL;       (*Уровень блокировки скимера*)
+    FillBathStop:   BOOL;       (*Уровень заполнения*)
+END_STRUCT
+END_TYPE
+(* @END_DECLARATION := '0' *)

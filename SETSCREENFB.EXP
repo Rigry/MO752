@@ -1,0 +1,271 @@
+
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '\/FBv1' *)
+(* @OBJECTFLAGS := '0, 8' *)
+(* @SYMFILEFLAGS := '2048' *)
+(*блок экрана задания параметров*)
+FUNCTION_BLOCK SetScreenFB
+VAR_INPUT
+    (*мин значение задаваемой переменной*)
+    in_var_min:     DINT;
+    (*макс значение задаваемой переменной*)
+    in_var_max:     DINT;
+    (*мин значение задаваемой переменной*)
+    in_var_min_r:   REAL;
+    (*макс значение задаваемой переменной*)
+    in_var_max_r:   REAL;
+
+    (*в каких единицах ведется задание минуты секунды градусы и тд*)
+    UnitParam:      STRING;
+    (*клавиатура ПЛК73*)
+    kbrd:           kbrd_tip;
+
+    (*текстовое описание переменной строки 1,2 вместе (обязательно 32 символа)*)
+    str_in:         STRING(32);
+
+    (*указательна изменяемый параметр*)
+    pby:            POINTER TO BYTE;
+    (*размер изменяемого параметра*)
+    bySize:         INT;
+    variable:       VarST;
+    ibufferD:       DINT;
+    ibufferOst:     DINT;
+	pSelect:        POINTER TO SelectScreenFB;
+	encOut:         INT;
+    enc:            DINT;
+    enc_r:          REAL;
+END_VAR
+
+VAR_OUTPUT
+    (*массив выводимых на экран строк*)
+    str_out:        ARRAY [1..4] OF STRING(16);
+    (*измененное значение переменной*)
+    out_varExt:     ARRAY [1..3] OF DWORD;
+    (*переменная выхода из экрана*)
+    exit_screen:    BOOL;
+    (*переменная перехода к следующему экрану*)
+    next_screen:    BOOL;
+
+
+END_VAR
+VAR
+    step:           INT;
+    ibuffer:        DINT;
+    rbuffer:        REAL;
+    bufferExt:      ARRAY[1..3] OF DWORD;
+    UnitSel:        UINT               :=1;
+    action_done:    BOOL;
+    TON_kbrd:       TON;
+    just_bool:      BOOL;
+    FirstIn:        BOOL               :=TRUE;
+    pw:             POINTER TO WORD;
+    pdw:            POINTER TO DWORD;
+    pr:             POINTER TO REAL;
+    pdi:            POINTER TO DINT;
+	pressLastTime:  BOOL;
+	TON_:           TON;
+END_VAR
+(* @END_DECLARATION := '0' *)
+exit_screen := FALSE;
+next_screen := FALSE;
+IF FirstIn AND (kbrd <> OFF OR pSelect^.encoder_.press AND pSelect^.encoder_.connected) THEN
+    action_done := TRUE;
+ELSE
+    FirstIn := FALSE;
+END_IF
+
+str_in := FillSpaceString(str_in, 32);
+str_out[1] := LEFT(str_in, 16);
+str_out[2] := RIGHT(str_in, 16);
+str_out[3] := '$A2/$A1 ';
+CASE step OF
+	0:
+    	CASE variable.type_ OF
+    		BYTE_:     ibuffer := variable.pby^;
+    		WORD_:     pw  := variable.pby;     ibuffer:=pw^;
+    		DWORD_:    pdw := variable.pby;     ibuffer:=pdw^;
+    		REAL_:     pr  := variable.pby;     rbuffer:=pr^;
+    		DINT_:     pdi := variable.pby;     ibuffer:=pdi^;
+    		DWORD_30:  pdw := variable.pby;     ibuffer:=pdw^;
+    		DWORD_500: pdw := variable.pby;     ibuffer:=pdw^;
+    	END_CASE
+        step := step + 1;
+    1:	IF NOT(action_done) AND kbrd <> OFF THEN
+			action_done := TRUE;
+			CASE kbrd OF
+				OUT:	exit_screen := TRUE; step := 0; FirstIn := TRUE;
+				UP:		acUp();
+				DOWN:	acDown();
+				ENTER:	CASE variable.type_ OF
+							BYTE_:     variable.pby^:=DINT_TO_BYTE(ibuffer);
+							WORD_:     pw^  := DINT_TO_WORD(ibuffer);
+							DWORD_:    pdw^ := DINT_TO_DWORD(ibuffer);
+							REAL_:     pr^  := rbuffer;
+							DINT_:     pdi^ := ibuffer;
+							DWORD_30:  pdw^ := DINT_TO_DWORD(ibuffer);
+							DWORD_500: pdw^ := DINT_TO_DWORD(ibuffer);
+						END_CASE
+				exit_screen := TRUE; step := 0; FirstIn := TRUE;
+				next_screen:=TRUE;
+			END_CASE
+		END_IF
+		IF pSelect^.encoder_.connected THEN
+			IF NOT(action_done) THEN
+				action_done := TRUE;
+				acENC();
+				pSelect^.encoder_(reset := FALSE);
+			END_IF
+	
+	
+			IF pSelect^.encoder_.enable THEN
+				IF pSelect^.encoder_.press <> pressLastTime
+					AND NOT (pSelect^.encoder_.press OR TON_.Q) THEN
+					pSelect^.encoder_.enable := FALSE;
+					action_done := TRUE;
+					CASE variable.type_ OF
+			            BYTE_:     variable.pby^:=DINT_TO_BYTE(ibuffer);
+			            WORD_:     pw^  := DINT_TO_WORD(ibuffer);
+			            DWORD_:    pdw^ := DINT_TO_DWORD(ibuffer);
+			            REAL_:     pr^  := rbuffer;
+			            DINT_:     pdi^ := ibuffer;
+			            DWORD_30:  pdw^ := DINT_TO_DWORD(ibuffer);
+			            DWORD_500: pdw^ := DINT_TO_DWORD(ibuffer);
+		            END_CASE
+					exit_screen := TRUE; step := 0; FirstIn := TRUE;
+			        next_screen:=TRUE;
+				END_IF
+				TON_(IN:= pSelect^.encoder_.press <> 0, PT := t#1s);
+				IF TON_.Q THEN
+					TON_(IN := FALSE);
+					action_done := TRUE;
+					pSelect^.encoder_.enable := FALSE;
+					exit_screen := TRUE; step := 0; FirstIn := TRUE;
+				END_IF
+			END_IF
+			pressLastTime := pSelect^.encoder_.press AND NOT exit_screen;
+		END_IF
+		TON_kbrd(IN:=kbrd<>OFF, PT:=t#1s);
+		IF TON_kbrd.Q THEN
+			IF just_bool THEN
+				CASE kbrd OF
+					UP:		acUp();
+					DOWN:	acDown();
+				END_CASE
+			END_IF
+			just_bool := NOT(just_bool);
+		END_IF
+END_CASE
+
+CASE variable.type_ OF
+    REAL_:
+        IF rbuffer < 10 AND rbuffer > -10 THEN
+            str_out[3] := CONCAT(str_out[3], '  ');
+        ELSIF rbuffer < 100 AND rbuffer > -100 THEN
+            str_out[3] := CONCAT(str_out[3], ' ');
+        END_IF
+        str_out[3] := CONCAT(str_out[3], REAL_TO_STRING(rbuffer));
+    DWORD_30:
+        IF ibuffer < 10  THEN
+            str_out[3] := CONCAT(str_out[3], '  ');
+        ELSIF ibuffer < 600  THEN
+            str_out[3] := CONCAT(str_out[3], ' ');
+        END_IF
+        ibufferD   := ibuffer / 60;
+        ibufferOst := ibuffer / 6 MOD 10;
+        str_out[3] := CONCAT(str_out[3], DINT_TO_STRING (ibufferD));
+        str_out[3] := CONCAT(str_out[3], ',');
+        str_out[3] := CONCAT(str_out[3], DINT_TO_STRING (ibufferOst));
+    DWORD_500:
+        IF ibuffer < 1000  THEN
+            str_out[3] := CONCAT(str_out[3], '  ');
+        ELSIF ibuffer < 10000  THEN
+            str_out[3] := CONCAT(str_out[3], ' ');
+        END_IF
+    ibufferD := ibuffer / 1000;
+    ibufferOst := ibuffer MOD 1000;
+    str_out[3] := CONCAT(str_out[3], DINT_TO_STRING (ibufferD));
+    str_out[3] := CONCAT(str_out[3], ',');
+    str_out[3] := CONCAT(str_out[3], DINT_TO_STRING(ibufferOst));
+ELSE
+    IF ibuffer < 10 AND ibuffer > -10 THEN
+        str_out[3] := CONCAT(str_out[3], '  ');
+    ELSIF ibuffer < 100 AND ibuffer > -100 THEN
+    str_out[3] := CONCAT(str_out[3], ' ');
+    END_IF
+    str_out[3] := CONCAT(str_out[3], DINT_TO_STRING(ibuffer));
+END_CASE
+
+str_out[3] := CONCAT(str_out[3], UnitParam);
+
+str_out[4] := 'ВЫХОД       ВВОД';
+
+
+IF kbrd = OFF  THEN
+    action_done := FALSE;
+END_IF
+
+IF NOT pSelect^.encoder_.press THEN
+	pSelect^.encoder_(enable := TRUE);
+END_IF
+END_FUNCTION_BLOCK
+ACTION	acDown:
+CASE variable.type_ OF
+    BYTE_:      ibuffer := MAX(ibuffer - 1, in_var_min);
+    WORD_:      ibuffer := MAX(ibuffer - 1, in_var_min);
+    DWORD_:     ibuffer := MAX(ibuffer - 1, in_var_min);
+    REAL_:      rbuffer := MAX(rbuffer * 0.9, in_var_min);
+    DINT_:      ibuffer := MAX(ibuffer - 1, in_var_min);
+    DWORD_30:   ibuffer := MAX(ibuffer - 30, in_var_min);
+    DWORD_500:  ibuffer := MAX(ibuffer - 500, in_var_min);
+END_CASE
+END_ACTION
+
+ACTION	acENC:
+IF ((ibuffer + pSelect^.encoder_.counter) > in_var_min) AND ((ibuffer + pSelect^.encoder_.counter) < in_var_max) THEN
+	CASE variable.type_ OF
+	    BYTE_:      ibuffer := ibuffer + pSelect^.encoder_.counter;
+	    WORD_:      ibuffer := ibuffer + pSelect^.encoder_.counter;
+	    DWORD_:     ibuffer := ibuffer + pSelect^.encoder_.counter;
+	    REAL_:      rbuffer := rbuffer + pSelect^.encoder_.counter;
+	    DINT_:      ibuffer := ibuffer + pSelect^.encoder_.counter;
+	    DWORD_30:   ibuffer := ibuffer + pSelect^.encoder_.counter * 30;
+	    DWORD_500:  ibuffer := ibuffer + pSelect^.encoder_.counter * 500;
+	END_CASE
+	pSelect^.encoder_(reset := TRUE);
+ELSIF (ibuffer + pSelect^.encoder_.counter) <= in_var_min THEN
+	CASE variable.type_ OF
+	    BYTE_:      ibuffer := in_var_min;
+	    WORD_:      ibuffer := in_var_min;
+	    DWORD_:     ibuffer := in_var_min;
+	    REAL_:      rbuffer := in_var_min;
+	    DINT_:      ibuffer := in_var_min;
+	    DWORD_30:   ibuffer := in_var_min;
+	    DWORD_500:  ibuffer := in_var_min;
+	END_CASE
+	pSelect^.encoder_(reset := TRUE);
+ELSIF (ibuffer + pSelect^.encoder_.counter) >= in_var_max THEN
+	CASE variable.type_ OF
+	    BYTE_:      ibuffer := in_var_max;
+	    WORD_:      ibuffer := in_var_max;
+	    DWORD_:     ibuffer := in_var_max;
+	    REAL_:      rbuffer := in_var_max;
+	    DINT_:      ibuffer := in_var_max;
+	    DWORD_30:   ibuffer := in_var_max;
+	    DWORD_500:  ibuffer := in_var_max;
+	END_CASE
+	pSelect^.encoder_(reset := TRUE);
+END_IF
+END_ACTION
+
+ACTION	acUp:
+CASE variable.type_ OF
+    BYTE_:     ibuffer := MIN(ibuffer + 1, in_var_max);
+    WORD_:     ibuffer := MIN(ibuffer + 1, in_var_max);
+    DWORD_:    ibuffer := MIN(ibuffer + 1, in_var_max);
+    DINT_:     ibuffer := MIN(ibuffer + 1, in_var_max);
+    REAL_:     rbuffer := MIN(rbuffer * 1.1, in_var_max);
+    DWORD_30:  ibuffer := MIN(ibuffer + 30, in_var_max);
+    DWORD_500: ibuffer := MIN(ibuffer + 500, in_var_max);
+END_CASE
+END_ACTION
+

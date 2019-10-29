@@ -1,0 +1,37 @@
+
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '\/FBv1' *)
+(* @OBJECTFLAGS := '0, 8' *)
+(* @SYMFILEFLAGS := '2048' *)
+FUNCTION_BLOCK Encoder
+VAR_INPUT
+	A:            BOOL;
+	B:            BOOL;
+	button:       BOOL;
+	reset:        BOOL;
+	enable:       BOOL;
+	connected:    BOOL := FALSE;
+END_VAR
+VAR_OUTPUT
+	press:        BOOL;
+	counter:      INT;
+END_VAR
+VAR
+	AC:           BOOL;
+END_VAR
+(* @END_DECLARATION := '0' *)
+IF A <> AC THEN
+	IF B <> A THEN
+		counter := counter + 1;
+	ELSIF B = A THEN
+		counter := counter - 1;
+	END_IF
+END_IF
+
+AC       := A;
+press    := button;
+
+IF reset THEN
+	counter := 0;
+END_IF
+END_FUNCTION_BLOCK

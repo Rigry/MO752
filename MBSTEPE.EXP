@@ -1,0 +1,11 @@
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '' *)
+(* @OBJECTFLAGS := '0, 8' *)
+TYPE MBStepE :
+(
+    StepSelect,
+    MV110Read,
+    MU110Write
+);
+END_TYPE
+(* @END_DECLARATION := '0' *)

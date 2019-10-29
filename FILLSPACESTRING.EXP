@@ -1,0 +1,22 @@
+
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '\/FUNv1' *)
+(* @OBJECTFLAGS := '0, 8' *)
+(* @SYMFILEFLAGS := '2048' *)
+(*заполняет строку пробелами до указанной длины*)
+FUNCTION FillSpaceString : STRING
+VAR_INPUT
+    str:   STRING;
+    index: UINT;
+END_VAR
+VAR
+    i:     INT;
+    ii:    INT;
+END_VAR
+(* @END_DECLARATION := '0' *)
+ii := LEN(str);
+FillSpaceString := str;
+FOR i := ii TO index - 1 DO
+    FillSpaceString := CONCAT(FillSpaceString, ' ');
+END_FOR
+END_FUNCTION

@@ -1,0 +1,26 @@
+
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '\/FUNv1' *)
+(* @OBJECTFLAGS := '0, 8' *)
+(* @SYMFILEFLAGS := '2048' *)
+FUNCTION TEMP_TO_STRING : STRING
+VAR_INPUT
+	in:      REAL;
+END_VAR
+VAR
+	temD:    INT;
+	temOst:  INT;
+END_VAR
+(* @END_DECLARATION := '0' *)
+temD := (REAL_TO_INT (in*10));
+temOst := temD MOD 10;
+temD := temD / 10;
+
+IF temD < 10 THEN
+TEMP_TO_STRING := (' ');
+END_IF
+
+TEMP_TO_STRING := CONCAT(INT_TO_STRING (temD),',');
+
+TEMP_TO_STRING := CONCAT(TEMP_TO_STRING, INT_TO_STRING(temOst));
+END_FUNCTION

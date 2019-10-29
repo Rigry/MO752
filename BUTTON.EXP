@@ -1,0 +1,18 @@
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '' *)
+(* @OBJECTFLAGS := '0, 8' *)
+TYPE Button :
+STRUCT
+    pusk:            ARRAY [US_1..Wash] OF BOOL;   (*Пуск*)
+    stop:            ARRAY [US_1..Wash] OF BOOL;   (*Стоп*)
+    emStop:          BOOL;   (*Аварийный стоп*)
+	pusk_dry:		BOOL;
+	stop_dry:		BOOL;
+    puskDrain:       BOOL;   (*Пуск слива*)
+    puskFill:        BOOL;   (*Пуск наполнения*)
+    puskPump:        BOOL;   (*Пуск насоса*)
+    puskBubbles:     BOOL;   (*Пуск барботажа*)
+	warmOn:          BOOL;
+END_STRUCT
+END_TYPE
+(* @END_DECLARATION := '0' *)

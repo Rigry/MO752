@@ -1,0 +1,20 @@
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '\/Other' *)
+(* @OBJECTFLAGS := '0, 8' *)
+TYPE kbrd_tip :
+(
+    off:=0,
+    DOWN:=4,
+    UP:=8,
+    ENTER:=16,
+    OUT:=64,
+    ALT:=128,
+    F1:=1,
+    F2:=2,
+    F3:=256,
+    pusk_stop:=32,
+    ALT_F1:=129,
+    ALT_F3:=384
+);
+END_TYPE
+(* @END_DECLARATION := '0' *)

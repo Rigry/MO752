@@ -1,0 +1,24 @@
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '' *)
+(* @OBJECTFLAGS := '0, 8' *)
+TYPE Control :
+STRUCT
+	heatUSTank:		BOOL;                    (*нагрев в баке УЗВ*)
+	heatWashTank:	BOOL;                    (*нагрев в баке ополаскивания*)
+	pump:			BOOL;                    (*насосы*)
+	lampAtt:		BOOL;                    (*лампа "Внимание"*)
+	warning_bath:	ARRAY [US_1..Wash] OF BOOL;
+	warning_dry:	BOOL;
+	lampWork:		BOOL;                    (*лампа "Работа"*)
+	lamp_work_dry:	BOOL;
+	lamp_work_bath:	ARRAY [US_1..US_2] OF BOOL;
+	lampTopLevel:	BOOL;                    (*лампа "Верхняя группа УЗГ"*)
+	lampLowerLevel:	BOOL;                    (*лампа "Нижняя группа УЗГ"*)
+	genPower:		BOOL;                    (*питание генераторов*)
+	skim:			BOOL;                    (*скиммеры*)
+	gener:			ARRAY [1..36] OF BOOL;   (*генераторы*)
+	heat_air:		BOOL;
+	fan:			BOOL;
+END_STRUCT
+END_TYPE
+(* @END_DECLARATION := '0' *)

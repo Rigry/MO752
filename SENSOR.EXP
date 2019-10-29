@@ -1,0 +1,15 @@
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '' *)
+(* @OBJECTFLAGS := '0, 8' *)
+TYPE Sensor :
+STRUCT
+    level:			ARRAY [BathTop..FillBathStop, US_1..Wash] OF BOOL;	(*массив уровней*)
+    button:			Button;									(*кнопки*)
+    genState:		ARRAY [1..36] OF BOOL;					(*состояние генераторов*)
+    tempBath:		ARRAY [US_1..Wash] OF REAL;				(*температура ванны*)
+    overloadPump:	BOOL;									(*Перегрев насоса*)
+	temAir:			REAL;
+	cover:			BOOL;
+END_STRUCT
+END_TYPE
+(* @END_DECLARATION := '0' *)

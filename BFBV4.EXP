@@ -1,0 +1,134 @@
+
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '\/BFBv2' *)
+(* @OBJECTFLAGS := '0, 8' *)
+(* @SYMFILEFLAGS := '2048' *)
+FUNCTION_BLOCK BFBv4
+VAR_INPUT
+    stAP:               APST;            (*параметры автоматической программы*)
+    sens:               SensorBath;      (*состояние датчиков*)
+    Param:              ExtParamST;      (*дополнительные параметры*)
+END_VAR
+VAR_OUTPUT
+    contr:              ControlBath;     (*управление*)
+    extOutB:            ExtOutST;        (*дополнительные выходы ванны*)
+    eStAP:              StAPE;
+END_VAR
+VAR
+    bInit:              BOOL;            (*флаг инициализации*)
+    iNSt:               INT     :=1;
+    oHeatBath:          HYST;            (*ФБ нагрева ванны*)
+	oHeatAir:			HYST;
+	oHeatTank:          HYST;            (*ФБ нагрева бака*)
+    TONStep:            TONP;            (*таймер состояния с паузой*)
+    TONVent:            TON;             (*таймер открытия вентиля*)
+    TONDelay:           TON;
+    TONRot:             TON;             (*таймер периода качания*)
+    TONRotDur:          TON;             (*таймер продолжительности качания*)
+    TONRotSlack:        TON;             (*таймер бездействия качания*)
+    BLINKMix:           BLINK;           (*блинкер перемешивания*)
+    BLINKSkim:          BLINK;           (*блинкер скиммера*)
+    filtrAvailable:     BOOL;            (*флаг доступности насоса*)
+    barbAvailable:      BOOL;            (*флаг доступности барботажа*)
+    autoAvailable:      BOOL;            (*флаг установки с гидролоками*)
+
+    iSt:                INT;             (*переменная шага*)
+    skimStart:          BOOL;            (*фиксация включения скиммера*)
+    justBool:           BOOL;
+    firstIntoFill:      BOOL    := TRUE; (*первый вход в заполнение*)
+    TONAddFill:         TON;             (*таймер доп. налива*)
+    addFill:            TIME    := t#3s; (*время до активации доп.налива*)
+
+END_VAR
+VAR_TEMP
+    i:                  INT;
+END_VAR
+(* @END_DECLARATION := '0' *)
+CASE eStAP OF
+    Wait:
+        IF Sens.button.Pusk THEN
+            iNSt  := 1;
+            eStAP := stAP.areSt[1];
+        END_IF
+
+
+
+
+    WarmBath:
+        IF NOT(EXTRACT(stAP.byBool, WarmWait)) OR Sens.tempBath >= stAP.byTemp THEN
+            acNextStep();
+        END_IF
+        acStop();
+
+    US:
+        Contr.us := stAP.arwTime[iNSt] <> 0;
+        TONStep(P := Sens.pause, IN := TRUE,
+        		PT := TO_MIN(stAP.arwTime[iNSt]));
+        IF TONStep.Q THEN
+            TONStep(IN := FALSE);
+            Contr.us := FALSE;
+            acNextStep();
+        END_IF
+        acStop();
+
+    Barb:
+        Contr.ventBarb := stAP.arwTime[iNSt] <> 0;
+        TONStep(P := Sens.pause, IN := TRUE,
+				PT := TO_MIN(stAP.arwTime[iNSt]));
+        IF TONStep.Q THEN
+            TONStep(IN := FALSE);
+            Contr.ventBarb := FALSE;
+            acNextStep();
+        END_IF
+        acStop();
+
+END_CASE
+
+
+
+(*нагрев*)
+oHeatBath.temperatura := stAP.byTemp;
+oHeatBath(ENABLE := Sens.warmOn, temInput := Sens.tempBath, temperaturaH := Param.deltaHyst);
+Contr.warmBath := oHeatBath.nagrev;
+
+(*Сушка*)
+oHeatAir.temperatura := stAP.byTemp;
+oHeatBath(ENABLE := Sens.warmOn, temInput := Sens.tempBath, temperaturaH := Param.deltaHyst);
+Contr.warmBath := oHeatBath.nagrev;
+
+(*расчет оставшегося времени шага*)
+extOutB.remTime := TO_MIN(stAP.arwTime[iNSt]) - TONStep.ET;
+END_FUNCTION_BLOCK
+ACTION	acNextStep:
+iNSt  := iNSt + 1;
+eStAP := stAP.areSt[iNSt];
+IF eStAP = Wait OR iNSt = iStQty + 1 THEN
+    iNSt := 1;
+END_IF
+
+firstIntoFill := TRUE;
+TONAddFill(IN:=FALSE);
+END_ACTION
+
+ACTION	acStop:
+IF Sens.button.Stop OR sens.button.emStop THEN
+    TONStep                 (IN:=FALSE);
+    TONVent                 (IN:=FALSE);
+    TONDelay                (IN:=FALSE);
+    TONAddFill              (IN:=FALSE);
+    eStAP                   := Wait;
+    iNSt                    := 1;
+    Contr.pumpBfromTank     := FALSE;
+    Contr.rotFo             := FALSE;
+    Contr.rotRe             := FALSE;
+    Contr.us                := FALSE;
+    Contr.ventBfromNet      := FALSE;
+    Contr.ventBPocketToNet  := FALSE;
+    Contr.ventBPocketToTank	:= FALSE;
+    Contr.ventBToNet        := FALSE;
+    Contr.ventBToTank       := FALSE;
+    Contr.ventBarb          := FALSE;
+    firstIntoFill           := TRUE;
+END_IF
+END_ACTION
+

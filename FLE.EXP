@@ -1,0 +1,11 @@
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '\/BathFB' *)
+(* @OBJECTFLAGS := '0, 8' *)
+TYPE FlE :
+(
+    NoFl,    (*нет жидкости*)
+    TMS,
+    water
+);
+END_TYPE
+(* @END_DECLARATION := '0' *)

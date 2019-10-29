@@ -1,0 +1,34 @@
+
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '\/FBv1' *)
+(* @OBJECTFLAGS := '0, 8' *)
+(* @SYMFILEFLAGS := '2048' *)
+(*блок таймера с паузой*)
+FUNCTION_BLOCK TONP
+VAR_INPUT
+    P:     BOOL;    (*Пауза*)
+    IN:    BOOL;
+    PT:    TIME;
+END_VAR
+VAR_OUTPUT
+    Q:     BOOL;
+    ET:    TIME;
+END_VAR
+VAR
+    TON1:  TON;
+    t:     TIME;
+END_VAR
+(* @END_DECLARATION := '0' *)
+IF P THEN
+    t  := MAX(TON1.ET + t, t);
+    ET := t;
+ELSE
+    ET := TON1.ET + t;
+END_IF
+TON1(IN := IN AND NOT(P), PT := PT - t);
+Q := TON1.Q;
+IF (*Q AND*) NOT(IN) THEN
+    t := t#0m0s0ms;
+    P := FALSE;
+END_IF
+END_FUNCTION_BLOCK

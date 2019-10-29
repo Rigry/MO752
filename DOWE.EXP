@@ -1,0 +1,15 @@
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '\/D7Timer' *)
+(* @OBJECTFLAGS := '0, 8' *)
+TYPE DoWE :
+(
+    Mon:=0,
+    Tue,
+    Wed,
+    Thu,
+    Fri,
+    Sat,
+    Sun
+);
+END_TYPE
+(* @END_DECLARATION := '0' *)

@@ -1,0 +1,15 @@
+
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '\/FUNv1' *)
+(* @OBJECTFLAGS := '0, 8' *)
+(* @SYMFILEFLAGS := '2048' *)
+FUNCTION BYTE_TO_VAR : VarST
+VAR_IN_OUT
+    in: BYTE;
+END_VAR
+VAR
+END_VAR
+(* @END_DECLARATION := '0' *)
+BYTE_TO_VAR.pby   := ADR(in);
+BYTE_TO_VAR.type_ := BYTE_;
+END_FUNCTION

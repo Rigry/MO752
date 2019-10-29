@@ -1,0 +1,20 @@
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '\/BathFB' *)
+(* @OBJECTFLAGS := '0, 8' *)
+TYPE SensorBath :
+STRUCT
+    level:			LevelBath;   (*Уровни*)
+    tempBath:		REAL;        (*Температура ванны*)
+    tempTank:		REAL;        (*Температура бака*)
+	tempAir:		REAL;
+	button:			ButtonBath;  (*Кнопки*)
+    Fl:				FlE;         (*тип жидкости в ванне*)
+    warmOn:			BOOL;        (*нагрев включен*)
+    mixOn:			BOOL;        (*перемешивание включен*)
+    pause:			BOOL;        (*Пауза АП*)
+    rotOn:			BOOL;        (*Включение вращения*)
+    flReset:		BOOL;        (*Сброс типа жидкости*)
+	overloadPump:	BOOL;        (*перегрузка насоса*)
+END_STRUCT
+END_TYPE
+(* @END_DECLARATION := '0' *)

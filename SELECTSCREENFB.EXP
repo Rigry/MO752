@@ -1,0 +1,158 @@
+
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '\/FBv1' *)
+(* @OBJECTFLAGS := '0, 8' *)
+(* @SYMFILEFLAGS := '2048' *)
+(*блок экрана выбора параметров кареткой (до iMaxSelScrParam)*)
+FUNCTION_BLOCK SelectScreenFB
+VAR_INPUT
+    (*строки с кратким описание параметров*)
+    str:         ARRAY [1..iMaxSelScrParam] OF STRING(16);
+    (*количество параметров*)
+    QtyParam:    INT;
+    (*клавиатура управления*)
+    kbrd:        kbrd_tip;
+    (*расширенная структура для дописывания в свободное место 4-й строки*)
+    ext:         SelectScreenAddStruc;
+	pressLastTime: BOOL;
+	encoder_:       Encoder;
+END_VAR
+VAR_OUTPUT
+    str_out:     ARRAY [1..4] OF STRING(16);
+    StrSelect:   UINT;
+END_VAR
+VAR
+    karetka:     UINT    :=1;
+    action_done: BOOL;
+    FirstIn:     BOOL    :=TRUE;
+    exit_scr:    BOOL;
+	TON_:        TON;
+END_VAR
+VAR_TEMP
+    (*номер параметра из str в каждой строке экрана, параметр, равный 0 - пустая строка*)
+    N:           ARRAY [1..3] OF INT:=3(0);
+    i:           INT;
+END_VAR
+(* @END_DECLARATION := '0' *)
+StrSelect := 0;StrSelect := 0;
+exit_scr  := FALSE;
+FOR i := 1 TO 3 DO
+    N[i] := 0;
+END_FOR
+IF FirstIn AND (kbrd <> OFF OR encoder_.press AND encoder_.connected) THEN
+    action_done   := TRUE;
+ELSE
+    FirstIn := FALSE;
+END_IF
+
+
+(*определение положения каретки и параметра каждй строки*)
+IF karetka = 1 THEN
+    FOR i := 1 TO MIN(QtyParam, 3) DO
+        N[i] := i;
+        str_out[i] := SEL(i = 1, ' ', '$B0');
+    END_FOR
+(*	str_out[1]:='$B0'; str_out[2]:=' '; str_out[3]:=' ';*)
+ELSIF karetka = QtyParam THEN
+    FOR i := MIN(QtyParam, 3) TO 1 BY -1 DO
+        N[i] := QtyParam + i - MIN(QtyParam, 3);
+        str_out[i] := SEL(i = MIN(QtyParam, 3), ' ', '$B0');
+    END_FOR
+(*	str_out[1]:=' '; str_out[2]:=' '; str_out[3]:='$B0';*)
+ELSE
+    N[1] := karetka - 1; N[2] := karetka; N[3] := karetka + 1;
+    str_out[1] := ' '; str_out[2] := '$B0'; str_out[3] := ' ';
+END_IF
+IF karetka > 2 THEN
+    str_out[1] := '$A1';
+END_IF
+IF karetka < QtyParam - 1 THEN
+    str_out[3] := '$A2';
+END_IF
+karetka := SEL(karetka > QtyParam, karetka, QtyParam);
+
+
+FOR i := 1 TO 3 DO
+    str_out[i] := SEL(N[i] = 0,	CONCAT(str_out[i], LEFT(str[N[i]], 15)), '');
+    (*	IF (*LEN(str[N[i]])<=15 AND*) N[i]<>0  THEN
+    str_out[i]:=CONCAT(str_out[i],LEFT(str[N[i]],15);
+    ELSE
+    str_out[i]:='';
+    END_IF
+    *)
+END_FOR
+
+IF LEN(ext.strIn) = 1 THEN
+    str_out[4] := CONCAT('ВЫХОД   ', ext.strIn);
+    str_out[4] := CONCAT(str_out[4], '   ВВОД');
+ELSIF LEN(ext.strIn) = 2 THEN
+    str_out[4] := CONCAT('ВЫХОД  ', ext.strIn);
+    str_out[4] := CONCAT(str_out[4], '   ВВОД');
+ELSIF LEN(ext.strIn) = 3 THEN
+    str_out[4] := CONCAT('ВЫХОД  ', ext.strIn);
+    str_out[4] := CONCAT(str_out[4], '  ВВОД');
+ELSIF LEN(ext.strIn) = 4 THEN
+    str_out[4] := CONCAT('ВЫХОД ', ext.strIn);
+    str_out[4] := CONCAT(str_out[4], '  ВВОД');
+ELSIF LEN(ext.strIn) = 5 THEN
+    str_out[4] := CONCAT('ВЫХОД ', ext.strIn);
+    str_out[4] := CONCAT(str_out[4], ' ВВОД');
+ELSE
+    str_out[4] := 'ВЫХОД       ВВОД';
+END_IF
+
+IF NOT(action_done) AND kbrd <> OFF THEN
+    action_done := TRUE;
+    CASE kbrd OF
+        UP:     karetka   := MAX(karetka - 1, 1);
+        DOWN:   karetka   := MIN(karetka + 1, QtyParam);
+        ENTER:  StrSelect := karetka; FirstIn  := TRUE;
+        OUT:    FirstIn   :=TRUE;     exit_scr := TRUE;
+    END_CASE
+END_IF
+
+IF encoder_.connected THEN
+	IF NOT(action_done) AND encoder_.connected THEN
+	    action_done := TRUE;
+		acENC();
+		encoder_(reset := FALSE);
+	END_IF
+
+
+	IF encoder_.enable THEN
+		IF encoder_.press <> pressLastTime AND NOT (encoder_.press OR TON_.Q) THEN
+			action_done := TRUE;
+			encoder_(enable := FALSE);
+			StrSelect := karetka; FirstIn  := TRUE;
+		END_IF
+		TON_(IN:= encoder_.press <> 0, PT := t#1s);
+		IF TON_.Q THEN
+			TON_(IN := FALSE);
+			action_done := TRUE;
+			encoder_(enable := FALSE);
+			FirstIn   :=TRUE;     exit_scr := TRUE;
+		END_IF
+	END_IF
+	pressLastTime := encoder_.press;
+END_IF
+
+IF NOT encoder_.press THEN
+	encoder_(enable := TRUE);
+END_IF
+IF kbrd = OFF THEN
+    action_done := FALSE;
+END_IF
+END_FUNCTION_BLOCK
+ACTION	acENC:
+IF ((karetka + encoder_.counter) > 1) AND ((karetka + encoder_.counter) < QtyParam) THEN
+	karetka := karetka + encoder_.counter;
+	encoder_(reset := TRUE);
+ELSIF (karetka + encoder_.counter) <= 1 THEN
+	karetka := 1;
+	encoder_(reset := TRUE);
+ELSIF (karetka + encoder_.counter) >= QtyParam THEN
+	karetka := QtyParam;
+	encoder_(reset := TRUE);
+END_IF
+END_ACTION
+

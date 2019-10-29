@@ -1,0 +1,9 @@
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '\/Other' *)
+(* @OBJECTFLAGS := '0, 8' *)
+TYPE SelectScreenAddStruc :
+STRUCT
+    strIn: STRING(5);    (*строка, дописываемая между ВЫХОД и ВХОД*)
+END_STRUCT
+END_TYPE
+(* @END_DECLARATION := '0' *)

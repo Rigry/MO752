@@ -1,0 +1,17 @@
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '\/Other' *)
+(* @OBJECTFLAGS := '0, 8' *)
+(*дополнительные настройки для блока экрана установки параметра*)
+TYPE SetScreenAddStruc :
+STRUCT
+    Extend:        BOOL;                        (*разрешает работу блока в режиме задания разных велечин*)
+    in_var:        ARRAY[1..3] OF DWORD;        (*задаваемая переменная*)
+    in_var_min:    ARRAY[1..3] OF  DWORD;       (*мин значение задаваемой переменной*)
+    in_var_max:    ARRAY[1..3] OF  DWORD;       (*макс значение задаваемой переменной*)
+    UnitParam:     ARRAY[1..3] OF  STRING(16);  (*в каких единицах ведется задание минуты секунды градусы и тд*)
+    EnableF3:      BOOL;                        (*разрешить третью единицу измерения*)
+    bDoWSet:       BOOL;                        (*задаваемый параметр - день недели*)
+    iValInc:       INT;                         (*шаг увеличения величины*)
+END_STRUCT
+END_TYPE
+(* @END_DECLARATION := '0' *)

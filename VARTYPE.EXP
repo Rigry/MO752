@@ -1,0 +1,15 @@
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '' *)
+(* @OBJECTFLAGS := '0, 8' *)
+TYPE VarType :
+(
+    BYTE_,
+    WORD_,
+    DWORD_,
+    REAL_,
+    DINT_,
+    DWORD_30,
+    DWORD_500
+);
+END_TYPE
+(* @END_DECLARATION := '0' *)

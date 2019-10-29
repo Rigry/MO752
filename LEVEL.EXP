@@ -1,0 +1,21 @@
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '' *)
+(* @OBJECTFLAGS := '0, 8' *)
+TYPE Level :
+(
+    BathTop,
+    BathMiddle,
+    BathLower,
+    TankTop,
+    TankMiddle,
+    TankLower,
+    USBlock,
+    USBlockTop,
+    WarmBlock,
+    PumpBlock,
+    BarbBlock,
+    SkimerBlock,
+    FillBathStop
+);
+END_TYPE
+(* @END_DECLARATION := '0' *)

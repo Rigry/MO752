@@ -1,0 +1,14 @@
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '' *)
+(* @OBJECTFLAGS := '0, 8' *)
+TYPE ModuleAddr :
+(
+    A2 := 22,
+    A3 := 33,
+    A4 := 44,
+    A5 := 55,
+    A6 := 66,
+    A7 := 77
+);
+END_TYPE
+(* @END_DECLARATION := '0' *)

@@ -1,0 +1,18 @@
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @GLOBAL_VARIABLE_LIST := 'GVL_APBool' *)
+(* @PATH := '' *)
+(* @OBJECTFLAGS := '0, 8' *)
+(* @SYMFILEFLAGS := '2048' *)
+VAR_GLOBAL CONSTANT
+    WarmWait :BYTE:=0;    (*отложенный старт*)
+    DynContr :BYTE:=1;    (*динамическое управление*)
+    RotOn    :BYTE:=2;    (*качание*)
+END_VAR
+
+(* @OBJECT_END := 'GVL_APBool' *)
+(* @CONNECTIONS := GVL_APBool
+FILENAME : ''
+FILETIME : 0
+EXPORT : 0
+NUMOFCONNECTIONS : 0
+*)

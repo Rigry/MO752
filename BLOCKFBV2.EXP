@@ -1,0 +1,60 @@
+
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '\/BFBv2' *)
+(* @OBJECTFLAGS := '0, 8' *)
+(* @SYMFILEFLAGS := '2048' *)
+FUNCTION_BLOCK BlockFBv2
+VAR_INPUT
+    pBath:             POINTER TO BFBv4;
+END_VAR
+VAR_OUTPUT
+    ContrOut:          ControlBath;
+   (*оставшееся время задержки повторного включения УЗ*)
+    tUSDelayRemain:    TIME;
+END_VAR
+VAR
+    (*таймер блокировки от многократного включения УЗ*)
+    TONUSBl:           TON;
+    bUSwasOn:          BOOL;
+END_VAR
+(* @END_DECLARATION := '0' *)
+ContrOut:=pBath^.Contr;
+
+(*Блокировка ТЭН в ванне или баке*)
+IF pBath^.Param.heaterInTank THEN
+    ContrOut.warmBath := pBath^.Contr.warmBath
+    AND pBath^.Sens.level.WarmBlock AND pBath^.Sens.tempBath>0;
+ELSE
+    ContrOut.warmBath := pBath^.Contr.warmBath
+                     AND pBath^.Sens.level.WarmBlock
+                     AND pBath^.Sens.tempBath>0;
+END_IF
+
+
+(*Блокирковка насоса*)
+ContrOut.pumpBfromTank := pBath^.contr.pumpBfromTank
+						AND pBath^.sens.level.PumpBlock
+						AND NOT (pBath^.sens.pause)
+						AND pBath^.sens.overloadPump;
+
+
+(*Блокировка ультразвука*)
+ContrOut.us := pBath^.contr.us
+           AND pBath^.sens.level.USBlock
+           AND NOT(pBath^.sens.pause)
+           AND NOT(TONUSBl.IN);
+IF bUSwasOn > ContrOut.us THEN
+    TONUSBl.IN     := TRUE;
+    tUSDelayRemain := WORD_TO_TIME(USDelayRet) * 1000 - TONUSBl.ET;
+ELSE
+	tUSDelayRemain := t#0ms;
+END_IF
+TONUSBl(PT:=WORD_TO_TIME(USDelayRet) * 1000);
+IF NOT(TONUSBl.IN) OR  TONUSBl.Q THEN
+    TONUSBl.IN := FALSE;
+    bUSwasOn   := ContrOut.us;
+END_IF
+
+(*Блокировка барботажа*)
+ContrOut.ventBarb:=pBath^.Contr.ventBarb AND pBath^.Sens.level.BarbBlock;
+END_FUNCTION_BLOCK

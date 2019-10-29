@@ -1,0 +1,14 @@
+LIBRARY
+Ind_Mode.lib 26.8.10 18:05:16
+(* @LIBRARYSYMFILEINFO := '0' *)
+NumOfPOUs: 7
+Clear_Display: 2048
+Get_Display_Mode: 2048
+ReadDisplay: 2048
+SWITCH_TO_EDITOR: 2048
+Switch_To_PREV_Mode: 2048
+Switch_To_Single_Mode: 2048
+Write_Display: 2048
+NumOfGVLs: 1
+Global_Variables: 2048
+END_LIBRARY

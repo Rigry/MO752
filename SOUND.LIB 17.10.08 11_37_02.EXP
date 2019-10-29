@@ -1,0 +1,8 @@
+LIBRARY
+Sound.lib 17.10.08 11:37:02
+(* @LIBRARYSYMFILEINFO := '0' *)
+NumOfPOUs: 1
+BeepForTimeUser: 2048
+NumOfGVLs: 1
+Global_Variables: 2048
+END_LIBRARY

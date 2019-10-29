@@ -1,0 +1,10 @@
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '' *)
+(* @OBJECTFLAGS := '0, 8' *)
+TYPE VarST :
+STRUCT
+    pby:      POINTER TO BYTE;
+    type_:    VarType;
+END_STRUCT
+END_TYPE
+(* @END_DECLARATION := '0' *)

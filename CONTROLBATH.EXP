@@ -1,0 +1,23 @@
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '\/BathFB' *)
+(* @OBJECTFLAGS := '0, 8' *)
+TYPE ControlBath :
+STRUCT
+   us:                  BOOL;      (*ультразвук*)
+   warmBath:            BOOL;      (*нагрев ванны*)
+   warmTank:            BOOL;      (*нагрев бака*)
+   rotFo:               BOOL;      (*вращение вперед*)
+   rotRe:               BOOL;      (*вращение назад*)
+   ventBfromNet:        BOOL;      (*вентиль из сети*)
+   pumpBfromTank:       BOOL;      (*фильтрационный насос*)
+   ventBPocketToNet:    BOOL;      (*вентиль из кармана в сеть*)
+   ventBPocketToTank:   BOOL;      (*вентиль из кармана в бак*)
+   ventBToNet:          BOOL;      (*вентиль из ванны в сеть*)
+   ventBToTank:         BOOL;      (*вентиль из ванны в бак*)
+   ventBarb:            BOOL;      (*барботаж*)
+   skim:                BOOL;      (*скиммер*)
+   dry:                 BOOL;      (*сушка*)
+   dryFan:              BOOL;      (*вентилятор сушки*)
+END_STRUCT
+END_TYPE
+(* @END_DECLARATION := '0' *)

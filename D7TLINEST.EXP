@@ -1,0 +1,11 @@
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '\/D7Timer' *)
+(* @OBJECTFLAGS := '0, 8' *)
+TYPE D7TLineST :    (*структура одной линии расписания 7дн таймера*)
+STRUCT
+    wTimeOfWeek:    WORD;    (*время недели в минутах, к этому времени надо нагреть*)
+    byTemp:         BYTE;    (*поддерживаемая температура*)
+    byDur:          BYTE;    (*продолжительность в часах*)
+END_STRUCT
+END_TYPE
+(* @END_DECLARATION := '0' *)

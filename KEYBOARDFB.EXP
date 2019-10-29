@@ -1,0 +1,102 @@
+
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '\/FBv1' *)
+(* @OBJECTFLAGS := '0, 8' *)
+(* @SYMFILEFLAGS := '2048' *)
+(*блок клавиатура*)
+FUNCTION_BLOCK KeyboardFB
+VAR_IN_OUT
+    kbrd:         WORD;
+END_VAR
+VAR_INPUT
+END_VAR
+VAR_OUTPUT
+    OFF:          BOOL;
+    DOWN:         ButtonEvent;
+    UP:           ButtonEvent;
+    ENTER:        ButtonEvent;
+    OUT:          ButtonEvent;
+    ALT:          ButtonEvent;
+    F1:           ButtonEvent;
+    F2:           ButtonEvent;
+    F3:           ButtonEvent;
+    PUSK_STOP:    ButtonEvent;
+    ALT_F1:       ButtonEvent;
+    ALT_F3:       ButtonEvent;
+END_VAR
+VAR
+    iSt:          INT;
+	(* указатель на устанавливемый/снимаемый сигнал *)
+    pBut:         POINTER TO ButtonEvent;
+    kbrdLastTime: WORD;
+    TON_:         TON;
+    TONincr:      TON;
+    lastIncr:     BYTE;
+END_VAR
+VAR_TEMP
+
+END_VAR
+(* @END_DECLARATION := '0' *)
+CASE iSt OF
+    0:	(* init *)
+        pBut     := ADR(ALT);
+        TON_(IN:= FALSE, PT := t#1s);
+        lastIncr := 1;
+        iSt      := 1;
+
+    1:	(* down *)
+        pBut^.downEvent := FALSE;
+        pBut^.incr := 0;
+        IF kbrd <> 0 AND kbrd <> kbrdLastTime THEN
+            acSetPointerToBool();
+            pBut^.downEvent := TRUE;
+            pBut^.incr      := 1;
+        END_IF
+        TON_(IN:= kbrd<>0, PT := t#1s);
+        IF TON_.Q THEN
+            TON_(IN := FALSE);
+            pBut^.longPush := TRUE;
+            pBut^.incr     := 1;
+            iSt            := 2;
+        END_IF
+
+    2:	(* longPush *)
+        pBut^.incr := 0;
+        TON_(IN := TRUE, PT := t#200ms);
+        IF TON_.Q THEN
+            TON_(IN:=FALSE);
+            pBut^.incr := lastIncr;
+        END_IF
+        TONincr(IN := TRUE, PT := t#1s);
+        IF TONincr.Q THEN
+            TONincr(IN := FALSE);
+            lastIncr := lastIncr + 1;
+        END_IF
+        IF kbrd = 0 OR kbrd <> kbrdLastTime THEN
+            pBut^.longPush := FALSE;
+            TON_(IN := FALSE);
+            pBut^.incr     := 0;
+            lastIncr       := 1;
+            iSt            := 1;
+        END_IF
+
+END_CASE
+kbrdLastTime := kbrd;
+OFF          := kbrd = 0;
+END_FUNCTION_BLOCK
+ACTION	acSetPointerToBool:
+CASE kbrd OF
+    1:      pBut := ADR(F1);
+    2:      pBut := ADR(F2);
+    4:      pBut := ADR(DOWN);
+    8:      pBut := ADR(UP);
+    16:     pBut := ADR(ENTER);
+    32:     pBut := ADR(PUSK_STOP);
+    64:     pBut := ADR(OUT);
+    128:    pBut := ADR(ALT);
+    256:    pBut := ADR(F3);
+    129:    pBut := ADR(ALT_F1);
+    384:    pBut := ADR(ALT_F3);
+END_CASE
+END_ACTION
+

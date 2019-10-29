@@ -1,0 +1,9 @@
+
+RESOURCE
+
+TASK main (PRIORITY := 1, INTERVAL := T#3ms);
+PLC_PRG();
+{Additional_info : 1,0,0,0,1,4294967295}
+END_TASK
+
+END_RESOURCE

@@ -1,0 +1,13 @@
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '\/BathFB' *)
+(* @OBJECTFLAGS := '0, 8' *)
+TYPE APST :
+STRUCT
+	areSt:		ARRAY [1..iStQty] OF StAPE;        (*массив шагов автоматической программы*)
+	arwTime:	ARRAY [1..iStQty] OF WORD;         (*временной параметр шага в минутах*)
+	byTemp:		BYTE;                              (*заданная температура*)
+	byBool:		BYTE;                              (*состояние программных ключей. Описываются в GVL_APBoolE*)
+	byTempAir:	BYTE;
+END_STRUCT
+END_TYPE
+(* @END_DECLARATION := '0' *)

@@ -1,0 +1,32 @@
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '' *)
+(* @OBJECTFLAGS := '0, 8' *)
+TYPE Screens :
+(
+	s_info,
+
+	s_osnovnoy_US_1,
+	s_osnovnoy_US_2,
+	s_osnovnoy_Wash,
+	s_osnovnoy_Dry,
+
+	s_nastroyki,
+	s_nastroyki_ext,
+
+	s_time,
+	s_time_us_1,
+	s_time_us_2,
+	s_time_dry,
+
+	s_tem,
+	s_tem_us_1,
+	s_tem_us_2,
+	s_tem_wash,
+	s_tem_dry,
+
+	s_tMaxSet,
+	s_temHSet
+);
+END_TYPE
+
+(* @END_DECLARATION := '0' *)

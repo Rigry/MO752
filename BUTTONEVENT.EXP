@@ -1,0 +1,17 @@
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '\/BathFB' *)
+(* @OBJECTFLAGS := '0, 8' *)
+TYPE ButtonEvent :
+STRUCT
+   (* кнопка нажата, устанавливается на один цикл *)
+   downEvent:    BOOL;
+
+   (* нажатие дольше секунды *)
+   longPush:     BOOL;
+
+   (* число, на которое надо инкрементировать, сначала 1,
+   начиная с 3 секунды увеличиваеться на 1 каждую секунду *) 
+   incr:         BYTE;
+END_STRUCT
+END_TYPE
+(* @END_DECLARATION := '0' *)

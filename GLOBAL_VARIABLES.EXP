@@ -1,0 +1,70 @@
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @GLOBAL_VARIABLE_LIST := 'Global_Variables' *)
+(* @PATH := '' *)
+(* @OBJECTFLAGS := '0, 8' *)
+(* @SYMFILEFLAGS := '2048' *)
+VAR_GLOBAL CONSTANT
+
+	byMU110Address: BYTE:=11;				(*адрес МУ-110*)
+	byMV110Address: BYTE:=22;				(*адрес МВ-110*)
+
+END_VAR
+VAR_GLOBAL
+	bDInput1 AT %IX0.0.0.0: BOOL;
+	bDInput2 AT %IX0.0.0.1: BOOL;
+	bDInput3 AT %IX0.0.0.2: BOOL;
+	bDInput4 AT %IX0.0.0.3: BOOL;
+	bDInput5 AT %IX0.0.0.4: BOOL;
+	bDInput6 AT %IX0.0.0.5: BOOL;
+	bDInput7 AT %IX0.0.0.6: BOOL;
+	bDInput8 AT %IX0.0.0.7: BOOL;
+
+	rOutput1 AT %QD0.1.0: REAL;
+	rOutput2 AT %QD0.1.1: REAL;
+	rOutput3 AT %QD0.1.2: REAL;
+	rOutput4 AT %QD0.1.3: REAL;
+	rOutput5 AT %QD0.1.4: REAL;
+	rOutput6 AT %QD0.1.5: REAL;
+	rOutput7 AT %QD0.1.6: REAL;
+	rOutput8 AT %QD0.1.7: REAL;
+
+	rAInput1 AT %ID0.2.0: REAL;
+	rAInput2 AT %ID0.2.2: REAL;
+	rAInput3 AT %ID0.2.4: REAL;
+	rAInput4 AT %ID0.2.6: REAL;
+	rAInput5 AT %ID0.2.8: REAL;
+	rAInput6 AT %ID0.2.10: REAL;
+	rAInput7 AT %ID0.2.12: REAL;
+	rAInput8 AT %ID0.2.14: REAL;
+
+	kbrd AT %IW0.4.2: WORD;
+	led  AT %QB0.4.4: BYTE;
+	n: WORD := 0;
+END_VAR
+VAR_GLOBAL RETAIN
+	wFilterTimeRet: 	WORD	:= 3000;    (*время фильтра поплавка в мс*)
+	tempMaxRet: 		BYTE	:= 95;		(*максим. температура*)
+	timeMaxRet: 		WORD	:= 999;		(*максим. время*)
+	USDelayRet: 		WORD	:= 0;		(*время блокировки повторного включения УЗ в сек*)
+	hystRet: 			WORD	:= 2;		(*гистерезис *10^(-2) гр.С*)
+	pumpModeRet: 	    BOOL;				(*режим работы насоса (TRUE - работает постоянно, FALSE - с заданной частотой и скважностью*)
+	pumpTimeLo:         WORD;				(*массив для задания времени бездействия насоса в минутах*)
+	pumpTimeHi: 		WORD;				(*массив для задания продолжительности работы насоса в секундах*)
+	APRet: 		        ARRAY [US_1..Wash] OF APST;				(*параметры автоматической программы*)
+	powerOffDelayRet: 	WORD	:= 15;		(*задержка отключения питания генераторов в секундах*)
+	genOnDelayRet: 	    WORD	:= 500;		(*время между включениями генераторов в мс*)
+    fillDelay:          WORD    := 5;       (*задержка закрытия электроклапана наполнения воды*)
+    ventTime:           WORD    := 0;       (*задержка гидролока*)
+	timePump:			WORD    := 1;
+	temp_Air:			WORD;
+	time_dry:			WORD;
+END_VAR
+
+
+(* @OBJECT_END := 'Global_Variables' *)
+(* @CONNECTIONS := Global_Variables
+FILENAME : ''
+FILETIME : 0
+EXPORT : 0
+NUMOFCONNECTIONS : 0
+*)

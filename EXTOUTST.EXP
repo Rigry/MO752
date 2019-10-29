@@ -1,0 +1,11 @@
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '\/BathFB' *)
+(* @OBJECTFLAGS := '0, 8' *)
+(*Дополнительные выходы ванны*)
+TYPE ExtOutST :
+STRUCT
+    remTime:     TIME;    (*оставшееся время*)
+    bathEmpty:   BOOL;    (*ванна пуста*)
+END_STRUCT
+END_TYPE
+(* @END_DECLARATION := '0' *)

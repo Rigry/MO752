@@ -1,0 +1,806 @@
+
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '' *)
+(* @OBJECTFLAGS := '0, 8' *)
+(* @SYMFILEFLAGS := '2048' *)
+
+PROGRAM PLC_PRG
+VAR
+	bInit:              BOOL;
+	warning:            BOOL;
+	C:                  INT;
+	D:                  BOOL;
+
+	encoder_:			Encoder;
+	TON50ms:            TON;
+
+	bath:               ARRAY [US_1..Wash] OF BFBv4;                           (*массив ФБ ванн*)
+	block:              ARRAY [US_1..Wash] OF BlockFBv2;                       (*блокировки*)
+	sens:               Sensor;                          (*структура датчиков*)
+	contr:              Control;                         (*структура управления*)
+	filtr:              digitalFiltr;
+	buttons:            KeyboardFB;
+	variable:           VarST;
+	HYST_Air:			HYST;
+	TON_heat_air:		TON;
+	TON_fan:			TON;
+	TONP:				TONP;
+	start_heat_air:		BOOL;
+	stape:				StAPE;
+
+	(*modbus*)
+	bOpenPort:          BOOL        := 0;
+	ePorts:             PORTS       := 0;
+	stSettings:         COMSETTINGS;
+	oComService:        COM_SERVICE;
+	arMBuffer:          ARRAY [0..255] OF BYTE;
+	tTimeOut:           TIME        := t#100ms;      (*время таймаута порта*)
+	eMBStep:            MBStepE     := MV110Read;  (*кейс модбаса*)
+	udErr:              UDINT       :=0;            (*счетчик ошибок*)
+	wBuffer:            WORD;
+
+	mbA2:               WORD;
+	arTON:              ARRAY [1..2] OF TON;
+
+	oMB_16:             MB_WR_REGS;                 (*функция Modbus 16*)
+	oMB_03:             MB_RD_HOLD_REGS;            (*функция Modbus 03*)
+	oMB_06:				MB_WR_SNG_REG;				(*запись значения в один регистр хранения (Preset Single Register).*)
+
+	TONMBDelay:         TON;                        (*таймер задержки modbus*)
+	tMBDelay:           TIME        := t#10ms;     (*задержка modbus*)
+	bMBStepSelect:      BOOL;                       (*выбор запись/чтение*)
+
+	(*indicator*)
+	Current_screen:     screens     := s_info;
+	TONInfo:            TON;
+	str:                ARRAY [1..4] OF STRING(16);
+	pred_str:           ARRAY [1..4] OF STRING(16);
+	SelectScreen:       SelectScreenFB;
+	SetScreen:          SetScreenFB;
+
+END_VAR
+VAR_TEMP
+
+	I:                  INT;
+	k:                  INT;
+	j:                  INT;
+	iStTmp:             INT;                        (*шаг АП*)
+	line:               INT;                        (*строка индикатора*)
+
+END_VAR
+
+(* @END_DECLARATION := '0' *)
+IF NOT(bInit) THEN
+    acInit();									(*инициализация*)
+ELSE
+
+	buttons(kbrd := kbrd);
+	acMB();
+	SelectScreen.encoder_(A := bDInput6, B := bDInput5, button := bDInput7, connected := TRUE);
+	SetScreen.pSelect := ADR(SelectScreen);
+	C := SelectScreen.encoder_.counter;
+	D := SelectScreen.encoder_.press;
+
+	encoder_(A := bDInput6, B := bDInput5, button := bDInput7, connected := TRUE);
+
+
+	(*назначение входов*)
+	sens.tempBath[US_1]			:= rAInput1;
+	sens.tempBath[US_2]			:= rAInput2;
+	sens.tempBath[Wash]			:= rAInput3;
+	sens.temAir					:= rAInput4;
+
+	sens.button.emStop			:= bDInput1;
+
+	sens.level[BathLower, US_1]	:= mbA2.0;
+	sens.level[BathLower, US_2]	:= mbA2.1;
+	sens.level[BathLower, Wash]	:= mbA2.2;
+	sens.button.pusk[US_1]		:= mbA2.4;
+	sens.button.stop[US_1]		:= mbA2.5;
+	sens.button.pusk[US_2]		:= mbA2.6;
+	sens.button.stop[US_2]		:= mbA2.7;
+	sens.button.pusk_dry		:= mbA2.8;
+	(*sens.button.stop_dry		:= mbA2.9;*)
+
+	(*назначение входов ванн*)
+	FOR i := US_1 TO Wash DO
+		bath[i].sens.button.Pusk               := sens.button.pusk[i];
+		bath[i].sens.button.Stop               := sens.button.stop[i] ;
+		bath[i].sens.pause                     := NOT sens.level[BathLower, i];
+		bath[i].sens.tempBath                  := sens.tempBath[i];
+		bath[i].sens.level.BathLower           := sens.level[BathLower, i];
+		bath[i].sens.warmOn                    := TRUE;
+		bath[i].param.heaterInTank             := TRUE;
+		bath[i].param.deltaHyst                := hystRet;
+		bath[i].sens.button.emStop             := sens.button.emStop;
+		bath[i].sens.level.USBlock := bath[i].sens.level.WarmBlock := bath[i].sens.level.BathLower;
+	END_FOR
+
+
+	FOR i := US_1 TO Wash DO
+		bath[i](stAP:=APRet[i]);
+		block[i]();
+	END_FOR
+
+	(*управление*)
+	CASE stape OF
+		Wait:
+			contr.heat_air	:= FALSE;
+			contr.fan		:= FALSE;
+			IF sens.button.pusk_dry AND (temp_Air <> 0) AND (time_dry <> 0) THEN
+				stape := Heating;
+			END_IF
+		Heating:
+			contr.heat_air := HYST_Air.nagrev;
+			contr.fan := TRUE;
+			IF sens.temAir >= temp_Air THEN
+				stape:= Dry;
+			END_IF
+			IF sens.button.stop_dry THEN
+				contr.heat_air := FALSE;
+				stape := Cooling;
+			END_IF
+		Dry:
+			contr.heat_air := HYST_Air.nagrev;
+			contr.fan := TRUE;
+			TONP(P := FALSE, IN := TRUE, PT := TO_MIN(time_dry));
+			IF TONP.Q OR sens.button.stop_dry THEN
+				contr.heat_air := FALSE;
+				TONP(IN:= FALSE);
+				stape := Cooling;
+			END_IF
+		Cooling:
+			TON_fan(IN := TRUE, PT := TO_MIN(5));
+			IF TON_fan.Q THEN
+				TON_fan(IN:= FALSE);
+				stape := Wait;
+			END_IF
+	END_CASE
+
+	HYST_Air.temperatura := temp_Air;
+	HYST_Air(ENABLE := stape = Dry OR stape = Heating, temInput := sens.temAir	, temperaturaH := hystRet);
+
+	FOR i := US_1 TO Wash DO
+		contr.warning_bath[i]	:= NOT bath[i].sens.level.BathLower OR bath[i].sens.button.emStop OR (bath[i].sens.tempBath < 0);
+	END_FOR
+	contr.warning_dry			:= sens.temAir < 0;
+
+
+
+	contr.lamp_work_bath[US_1]	:= bath[US_1].eStAP <> Wait;
+	contr.lamp_work_bath[US_2]	:= bath[US_2].eStAP <> Wait;
+	contr.lamp_work_dry			:= stape <> Wait;
+	contr.lampAtt				:= contr.warning_bath[US_1] OR contr.warning_bath[US_2] OR contr.warning_bath[Wash] OR contr.warning_dry;
+
+	(*Назначение выходов*)
+	rOutput3 := BOOL_TO_REAL(contr.lampAtt);
+	rOutput1 := BOOL_TO_REAL(contr.lamp_work_bath[US_1] OR contr.lamp_work_bath[US_2] OR contr.lamp_work_dry);
+
+	rOutput5 := BOOL_TO_REAL(contr.lamp_work_bath[US_1]);
+	rOutput6 := BOOL_TO_REAL(contr.lamp_work_bath[US_2]);
+	rOutput7 := BOOL_TO_REAL(contr.lamp_work_dry);
+
+	led.0 := contr.warning_bath[US_1];
+	led.1 := contr.warning_bath[US_2];
+	led.2 := contr.warning_bath[Wash];
+	led.3 := contr.warning_dry;
+
+	(*вызов действия индикации*)
+	TON50ms(IN:=TRUE,PT:=t#50ms);
+	IF TON50ms.Q THEN
+		TON50ms(IN:=FALSE);
+		acIndicator();
+	END_IF
+END_IF
+END_PROGRAM
+ACTION	acIndicator:
+CASE Current_screen OF
+
+	s_info:
+
+		Switch_To_Single_Mode();				(*переход в монопольный режим*)
+		str[1] := '      ООО       ';
+		str[2] := 'Александра-Плюс ';
+		str[3] := '                ';
+		str[4] := '     МО-752     ';
+		TONInfo(IN := TRUE, PT := t#5s);
+		IF TONInfo.Q THEN
+			TONInfo(IN := FALSE);
+			encoder_(reset := TRUE);
+			Current_screen := s_osnovnoy_US_1;
+		END_IF
+
+	s_osnovnoy_US_1:
+		encoder_(reset := FALSE);
+		SelectScreen(kbrd := kbrd, QtyParam := 3);
+		line := 1;
+		str[line] := ' МО-752    УЗВ1 ';
+		line := 2;
+		IF bath[US_1].eStAP <> Wait THEN
+			str[line] := CONCAT('Время     ', TIME_TO_MMSS(bath[US_1].extOutB.remTime));
+		ELSE
+			str[line] := CONCAT('Время     ', TIME_TO_MMSS(TO_MIN(APRet[US_1].arwTime[2])));
+		END_IF
+
+		line := 3;
+		str[line] := CONCAT('Нагрев ', TEMP_TO_STRING(bath[US_1].sens.tempBath));
+		str[line] := CONCAT(str[line], '/');
+		str[line] := CONCAT(str[line], DWORD_TO_STRING (APRet[US_1].byTemp ));
+		str[line] := CONCAT(str[line], '$9BС');
+		line := 4;
+		IF sens.tempBath[US_1] < 0 THEN
+			str[line] := ' неисправно ТС  ';
+			warning :=TRUE;
+		ELSIF sens.button.emStop  THEN
+			str[line] := ' Авар. останов! ';
+			warning :=TRUE;
+		ELSIF NOT bath[US_1].sens.level.BathLower  THEN
+			str[line] := 'низкий ур. р-ра ';
+			warning :=TRUE;
+		ELSIF stape = Heating THEN
+			str[line] := '    подогрев    ';
+			warning :=FALSE;
+		ELSIF stape = Dry THEN
+			str[line] := '     сушка      ';
+			warning :=FALSE;
+		ELSIF bath[US_1].eStAP = US THEN
+			str[line] := '   ультразвук   ';
+			warning :=FALSE;
+		ELSIF stape = Cooling THEN
+			str[line] := '   охлаждение   ';
+			warning :=FALSE;
+		ELSIF bath[US_1].eStAP = Wait THEN
+			str[line] := 'ожидание старта ';
+			warning :=FALSE;
+		END_IF
+		IF SelectScreen.encoder_.press AND SelectScreen.encoder_.enable OR SelectScreen.kbrd = F1 THEN
+			SelectScreen.encoder_(enable := FALSE);
+			Current_screen := s_nastroyki;
+		END_IF
+		IF SelectScreen.kbrd = ALT_F3 THEN
+			Current_screen := s_nastroyki_ext;
+		END_IF
+
+		IF (encoder_.counter >= 1) THEN
+			Current_screen := s_osnovnoy_US_2;
+			encoder_(reset := TRUE);
+		ELSIF encoder_.counter < 0 THEN
+			encoder_(reset := TRUE);
+		END_IF
+
+
+	s_osnovnoy_US_2:
+		encoder_(reset := FALSE);
+		SelectScreen(kbrd := kbrd, QtyParam := 3);
+		line := 1;
+		str[line] := ' МО-752    УЗВ2 ';
+		line := 2;
+		IF bath[US_2].eStAP <> Wait THEN
+			str[line] := CONCAT('Время     ', TIME_TO_MMSS(bath[US_2].extOutB.remTime));
+		ELSE
+			str[line] := CONCAT('Время     ', TIME_TO_MMSS(TO_MIN(APRet[US_2].arwTime[2])));
+		END_IF
+
+		line := 3;
+		str[line] := CONCAT('Нагрев ', TEMP_TO_STRING(bath[US_2].sens.tempBath));
+		str[line] := CONCAT(str[line], '/');
+		str[line] := CONCAT(str[line], DWORD_TO_STRING (APRet[US_2].byTemp ));
+		str[line] := CONCAT(str[line], '$9BС');
+		line := 4;
+		IF sens.tempBath[US_2] < 0 THEN
+			str[line] := ' неисправно ТС  ';
+			warning :=TRUE;
+		ELSIF sens.button.emStop  THEN
+			str[line] := ' Авар. останов! ';
+			warning :=TRUE;
+		ELSIF NOT bath[US_2].sens.level.BathLower  THEN
+			str[line] := 'низкий ур. р-ра ';
+			warning :=TRUE;
+		ELSIF stape = Heating THEN
+			str[line] := '    подогрев    ';
+			warning :=FALSE;
+		ELSIF stape = Dry THEN
+			str[line] := '     сушка      ';
+			warning :=FALSE;
+		ELSIF bath[US_2].eStAP = US THEN
+			str[line] := '   ультразвук   ';
+			warning :=FALSE;
+		ELSIF stape = Cooling THEN
+			str[line] := '   охлаждение   ';
+			warning :=FALSE;
+		ELSIF bath[US_2].eStAP = Wait THEN
+			str[line] := 'ожидание старта ';
+			warning :=FALSE;
+		END_IF
+		IF SelectScreen.encoder_.press AND SelectScreen.encoder_.enable OR SelectScreen.kbrd = F1 THEN
+			SelectScreen.encoder_(enable := FALSE);
+			Current_screen := s_nastroyki;
+		END_IF
+		IF SelectScreen.kbrd = ALT_F3 THEN
+			Current_screen := s_nastroyki_ext;
+		END_IF
+		IF (encoder_.counter <= - 1) THEN
+			Current_screen := s_osnovnoy_US_1;
+			encoder_(reset := TRUE);
+		ELSIF (encoder_.counter >= 1) THEN
+			Current_screen := s_osnovnoy_Wash;
+			encoder_(reset := TRUE);
+		END_IF
+
+	s_osnovnoy_Wash:
+		encoder_(reset := FALSE);
+		SelectScreen(kbrd := kbrd, QtyParam := 3);
+		line := 1;
+		str[line] := ' МО-752 ополаск.';
+		line := 2;
+		str[line] := '                ';
+		line := 3;
+		str[line] := CONCAT('Нагрев ', TEMP_TO_STRING(bath[Wash].sens.tempBath));
+		str[line] := CONCAT(str[line], '/');
+		str[line] := CONCAT(str[line], DWORD_TO_STRING (APRet[Wash].byTemp ));
+		str[line] := CONCAT(str[line], '$9BС');
+		line := 4;
+		IF sens.tempBath[Wash] < 0 THEN
+			str[line] := ' неисправно ТС  ';
+			warning :=TRUE;
+		ELSIF sens.button.emStop  THEN
+			str[line] := ' Авар. останов! ';
+			warning :=TRUE;
+		ELSIF NOT bath[Wash].sens.level.BathLower  THEN
+			str[line] := 'низкий ур. р-ра ';
+			warning :=TRUE;
+		ELSIF stape = Heating THEN
+			str[line] := '    подогрев    ';
+			warning :=FALSE;
+		ELSIF stape = Dry THEN
+			str[line] := '     сушка      ';
+			warning :=FALSE;
+		ELSIF stape = Cooling THEN
+			str[line] := '   охлаждение   ';
+			warning :=FALSE;
+		ELSIF bath[Wash].eStAP = Wait THEN
+			str[line] := '                ';
+			warning :=FALSE;
+		END_IF
+		IF SelectScreen.encoder_.press AND SelectScreen.encoder_.enable OR SelectScreen.kbrd = F1 THEN
+			SelectScreen.encoder_(enable := FALSE);
+			Current_screen := s_nastroyki;
+		END_IF
+		IF SelectScreen.kbrd = ALT_F3 THEN
+			Current_screen := s_nastroyki_ext;
+		END_IF
+
+		IF (encoder_.counter <= - 1) THEN
+			Current_screen := s_osnovnoy_US_2;
+			encoder_(reset := TRUE);
+		ELSIF (encoder_.counter >= 1) THEN
+			Current_screen := s_osnovnoy_Dry;
+			encoder_(reset := TRUE);
+		END_IF
+
+
+	s_osnovnoy_Dry:
+		encoder_(reset := FALSE);
+		SelectScreen(kbrd := kbrd, QtyParam := 3);
+		line := 1;
+		str[line] := ' МО-752   Сушка ';
+		line := 2;
+		IF stape = Dry THEN
+			str[line] := CONCAT('Время     ', TIME_TO_MMSS(TO_MIN(time_dry) - TONP.ET));
+		ELSIF stape = Cooling THEN
+			str[line] := CONCAT('Время     ', TIME_TO_MMSS(TO_MIN(5) - TON_fan.ET));
+		ELSE
+			str[line] := CONCAT('Время     ', TIME_TO_MMSS(TO_MIN(time_dry)));
+		END_IF
+
+		line := 3;
+		str[line] := CONCAT('Нагрев ', TEMP_TO_STRING(sens.temAir));
+		str[line] := CONCAT(str[line], '/');
+		str[line] := CONCAT(str[line], DWORD_TO_STRING (temp_Air ));
+		str[line] := CONCAT(str[line], '$9BС');
+		line := 4;
+		IF sens.temAir < 0 THEN
+			str[line] := ' неисправно ТС  ';
+			warning :=TRUE;
+		ELSIF sens.button.emStop  THEN
+			str[line] := ' Авар. останов! ';
+			warning :=TRUE;
+		ELSIF stape = Heating THEN
+			str[line] := '    подогрев    ';
+			warning :=FALSE;
+		ELSIF stape = Dry THEN
+			str[line] := '     сушка      ';
+			warning :=FALSE;
+		ELSIF stape = Cooling THEN
+			str[line] := '   охлаждение   ';
+			warning :=FALSE;
+		ELSIF stape = Wait THEN
+			str[line] := 'ожидание старта ';
+			warning :=FALSE;
+		END_IF
+
+		IF SelectScreen.encoder_.press AND SelectScreen.encoder_.enable OR SelectScreen.kbrd = F1 THEN
+			SelectScreen.encoder_(enable := FALSE);
+			Current_screen := s_nastroyki;
+		END_IF
+
+		IF SelectScreen.kbrd = ALT_F3 THEN
+			Current_screen := s_nastroyki_ext;
+		END_IF
+
+		IF (encoder_.counter <= - 1) THEN
+			Current_screen := s_osnovnoy_Wash;
+			encoder_(reset := TRUE);
+		ELSIF encoder_.counter >= 1 THEN
+			encoder_(reset := TRUE);
+		END_IF
+
+	s_nastroyki:
+		SelectScreen.str[1] := ' Температура    ';
+		SelectScreen.str[2] := ' Время          ';
+		SelectScreen.str[3] := ' Выход          ';
+
+
+		SelectScreen(Qtyparam := 3, kbrd := kbrd);
+		str := SelectScreen.str_out;
+		encoder_(reset := TRUE);
+
+		CASE SelectScreen.StrSelect OF
+			0:	;
+			1:	Current_screen     := s_tem;
+			2:	Current_screen     := s_time;
+			3:	Current_screen	   := s_osnovnoy_US_1;
+		END_CASE
+
+		IF SelectScreen.exit_scr THEN
+			Current_screen := s_osnovnoy_US_1;
+		END_IF
+
+	s_tem:
+		SelectScreen.str[1] := ' УЗВ1           ';
+		SelectScreen.str[2] := ' УЗВ2           ';
+		SelectScreen.str[3] := ' Ополаскивание  ';
+		SelectScreen.str[4] := ' Сушка          ';
+		SelectScreen.str[5] := ' Выход          ';
+
+		SelectScreen(Qtyparam := 5, kbrd := kbrd);
+		str := SelectScreen.str_out;
+
+		CASE SelectScreen.StrSelect OF
+			0:	;
+			1:	Current_screen     := s_tem_us_1;
+			2:	Current_screen     := s_tem_us_2;
+			3:	Current_screen     := s_tem_wash;
+			4:	Current_screen     := s_tem_dry;
+			5:	Current_screen     := s_nastroyki;
+		END_CASE
+
+		IF SelectScreen.exit_scr THEN
+			Current_screen := s_nastroyki;
+		END_IF
+
+	s_tem_us_1:
+		SetScreen.str_in     := '  Температура УЗ';
+		SetScreen.in_var_min := 1;
+		SetScreen.in_var_max := tempMaxRet;
+		SetScreen.UnitParam  := '$9BС';
+
+		SetScreen.variable := BYTE_TO_VAR(APRet[US_1].byTemp);
+		SetScreen(kbrd := kbrd, str_out => str);
+
+
+
+		IF SetScreen.exit_screen THEN
+			Current_screen := s_tem;
+		END_IF
+
+		IF SetScreen.next_screen THEN
+			APRet[US_1].byTemp := DINT_TO_BYTE(SetScreen.ibuffer);
+		END_IF
+
+	s_tem_us_2:
+		SetScreen.str_in     := '  Температура УЗ';
+		SetScreen.in_var_min := 1;
+		SetScreen.in_var_max := tempMaxRet;
+		SetScreen.UnitParam  := '$9BС';
+
+		SetScreen.variable := BYTE_TO_VAR(APRet[US_2].byTemp);
+		SetScreen(kbrd := kbrd, str_out => str);
+
+
+
+		IF SetScreen.exit_screen THEN
+			Current_screen := s_tem;
+		END_IF
+
+		IF SetScreen.next_screen THEN
+			APRet[US_2].byTemp := DINT_TO_BYTE(SetScreen.ibuffer);
+		END_IF
+
+	s_tem_wash:				  (*|   4   4   4   ||  4   4   4   |*)
+		SetScreen.str_in     := '  Температура    ополаскивания  ';
+		SetScreen.in_var_min := 1;
+		SetScreen.in_var_max := tempMaxRet;
+		SetScreen.UnitParam  := '$9BС';
+
+		SetScreen.variable := BYTE_TO_VAR(APRet[Wash].byTemp);
+		SetScreen(kbrd := kbrd, str_out => str);
+
+
+
+		IF SetScreen.exit_screen THEN
+			Current_screen := s_tem;
+		END_IF
+
+		IF SetScreen.next_screen THEN
+			APRet[Wash].byTemp := DINT_TO_BYTE(SetScreen.ibuffer);
+		END_IF
+
+
+	s_tem_dry:				  (*|   4   4   4   ||  4   4   4   |*)
+		SetScreen.str_in     := '  Температура        сушки      ';
+		SetScreen.in_var_min := 1;
+		SetScreen.in_var_max := 120;
+		SetScreen.UnitParam  := '$9BС';
+
+		SetScreen.variable := WORD_TO_VAR(temp_Air);
+		SetScreen(kbrd := kbrd, str_out => str);
+
+
+
+		IF SetScreen.exit_screen THEN
+			Current_screen := s_tem;
+		END_IF
+
+		IF SetScreen.next_screen THEN
+			temp_Air := DINT_TO_WORD(SetScreen.ibuffer);
+		END_IF
+
+	s_time:
+		SelectScreen.str[1] := ' УЗВ1           ';
+		SelectScreen.str[2] := ' УЗВ2           ';
+		SelectScreen.str[3] := ' Сушка          ';
+		SelectScreen.str[4] := ' Выход          ';
+
+		SelectScreen(Qtyparam := 4, kbrd := kbrd);
+		str := SelectScreen.str_out;
+		encoder_(reset := TRUE);
+
+		CASE SelectScreen.StrSelect OF
+			0:	;
+			1:	Current_screen     := s_time_us_1;
+			2:	Current_screen     := s_time_us_2;
+			3:	Current_screen     := s_time_dry;
+			4:	Current_screen     := s_nastroyki;
+		END_CASE
+
+		IF SelectScreen.exit_scr THEN
+			Current_screen := s_nastroyki;
+		END_IF
+
+	s_time_us_1:				  (*|   4   4   4   ||  4   4   4   |*)
+		SetScreen.str_in     := '  Время работы    ультразвука   ';
+		SetScreen.in_var_min := 0;
+		SetScreen.in_var_max := timeMaxRet;
+		SetScreen.UnitParam  := ' мин';
+
+		SetScreen.variable := WORD_TO_VAR(APRet[US_1].arwTime[2]);
+		SetScreen(kbrd := kbrd, str_out => str);
+
+		IF SetScreen.exit_screen THEN
+			Current_screen := s_time;
+		END_IF
+
+		IF SetScreen.next_screen THEN
+			APRet[US_1].arwTime[2] := DINT_TO_WORD(SetScreen.ibuffer);
+		END_IF
+
+	s_time_us_2:				  (*|   4   4   4   ||  4   4   4   |*)
+		SetScreen.str_in     := '  Время работы    ультразвука   ';
+		SetScreen.in_var_min := 0;
+		SetScreen.in_var_max := timeMaxRet;
+		SetScreen.UnitParam  := ' мин';
+
+		SetScreen.variable := WORD_TO_VAR(APRet[US_2].arwTime[2]);
+		SetScreen(kbrd := kbrd, str_out => str);
+
+		IF SetScreen.exit_screen THEN
+			Current_screen := s_time;
+		END_IF
+
+		IF SetScreen.next_screen THEN
+			APRet[US_2].arwTime[2] := DINT_TO_WORD(SetScreen.ibuffer);
+		END_IF
+
+	s_time_dry:				  (*|   4   4   4   ||  4   4   4   |*)
+		SetScreen.str_in     := '  Время работы       сушки      ';
+		SetScreen.in_var_min := 1;
+		SetScreen.in_var_max := timeMaxRet;
+		SetScreen.UnitParam  := ' мин';
+
+		SetScreen.variable := WORD_TO_VAR(time_dry);
+		SetScreen(kbrd := kbrd, str_out => str);
+
+		IF SetScreen.exit_screen THEN
+			Current_screen := s_time;
+		END_IF
+
+		IF SetScreen.next_screen THEN
+			time_dry := DINT_TO_WORD(SetScreen.ibuffer);
+		END_IF
+
+
+	s_nastroyki_ext:
+		SelectScreen.str[1] := ' Макс. темп.    ';
+		SelectScreen.str[2] := ' Ширина гист.   ';
+
+		SelectScreen(kbrd := kbrd, QtyParam := 2);
+		str := SelectScreen.str_out;
+
+
+		CASE SelectScreen.StrSelect OF
+			0:	;
+			1:	Current_screen := s_tMaxSet;
+			2:	Current_screen := s_temHSet;
+		END_CASE
+
+		IF SelectScreen.exit_scr THEN
+		Current_screen := s_osnovnoy_US_1;
+		END_IF
+
+	s_tMaxSet:
+		SetScreen.str_in     := ' Максимальная   температура ';
+		SetScreen.in_var_min := 1;
+		SetScreen.in_var_max := 999;
+		SetScreen.UnitParam  := '$9BС';
+
+		SetScreen.variable := BYTE_TO_VAR(tempMaxRet);
+		SetScreen(kbrd := kbrd, str_out => str);
+
+
+
+		IF SetScreen.exit_screen THEN
+			Current_screen := s_nastroyki_ext;
+		END_IF
+
+		IF SetScreen.next_screen THEN
+			tempMaxRet := DINT_TO_BYTE(SetScreen.ibuffer);
+		END_IF
+
+	s_temHSet:
+		SetScreen.str_in     := '     Ширина       гистерезиса   ';
+		SetScreen.in_var_min := 2;
+		SetScreen.in_var_max := 998;
+		SetScreen.UnitParam  := '/10$9BС';
+
+		SetScreen.variable := WORD_TO_VAR(hystRet);
+		SetScreen(kbrd := kbrd, str_out => str);
+
+
+		IF SetScreen.exit_screen THEN
+			Current_screen := s_nastroyki_ext;
+		END_IF
+
+		IF SetScreen.next_screen THEN
+			hystRet := DINT_TO_BYTE(SetScreen.ibuffer);
+		END_IF
+
+END_CASE
+
+
+FOR I :=1 TO 4 BY 1 DO
+	str[I]:=FillSpaceString(str[I],16);
+	IF str[I]<>pred_str[I] THEN
+		Write_Display(SINGLE_MODE,0,INT_TO_BYTE(I-1),str[I]);
+		pred_str[I]:=str[I];
+	END_IF
+END_FOR
+END_ACTION
+
+ACTION	acInit:
+(*инициализация АП*)
+bInit := APRet[US_1].areSt[2] = US;
+IF NOT(bInit) THEN
+	APRet[US_1].areSt[1]	:= WarmBath;
+	APRet[US_1].byTemp		:= 60;
+	APRet[US_1].areSt[2]	:= US;
+	APRet[US_1].arwTime[2]	:= 1;
+
+	APRet[US_2].areSt[1]	:= WarmBath;
+	APRet[US_2].byTemp		:= 60;
+	APRet[US_2].areSt[2]	:= US;
+	APRet[US_2].arwTime[2]	:= 1;
+
+	APRet[Wash].areSt[1]	:= WarmBath;
+	APRet[Wash].byTemp		:= 30;
+
+END_IF
+FOR i := US_1 TO Wash DO
+    block[i].pBath	      := ADR(bath[i]);
+END_FOR
+END_ACTION
+
+ACTION	acMB:
+IF NOT(bOpenPort) THEN
+	stSettings.byParity     := 0;
+	stSettings.byStopBits   := 0;
+	stSettings.dwBaudRate   := 9600;
+	stSettings.dwBufferSize := 0;
+	stSettings.dwScan       := 0;
+	stSettings.dwTimeout    := 0;
+	stSettings.Port         := ePorts;
+	oComService(Enable:=NOT(bOpenPort),Settings:=stSettings,Task:=OPEN_TSK);
+	IF oComService.Ready THEN
+		bOpenPort := TRUE;
+	END_IF
+ELSE
+	CASE eMBStep OF
+
+		MV110Read:
+			TONMBDelay(IN := NOT TONMBDelay.Q,PT := tMBDelay);
+			IF TONMBDelay.Q THEN
+			oMB_03(
+				Enable    := TRUE,             (*разрешение работы блока*)
+				Mode      := MB_RTU,           (*режим передачи*)
+				DevAddr   := byMV110Address,    (*адрес*)
+				FirstAddr := 51,                (*регистр битовая маска входов*)
+				Quantity  := 1,                 (*количество регистров*)
+				ComHandle := stSettings.Port,  (*настройки сом-порта*)
+				TimeOut   := tTimeOut,          (*таймаут*)
+				Buffer    := arMBuffer,         (*буфер данных*)
+				);
+			IF oMB_03.Complete AND oMB_03.Exception = 0 THEN
+				udErr   := 0;
+				eMBStep := MU110Write;
+				wBuffer := BYTE_TO_WORD(arMBuffer[1])
+				OR SHL(BYTE_TO_WORD(arMBuffer[0]), 8);
+				mbA2    := wBuffer;
+			END_IF
+			IF oMB_03.Complete AND oMB_03.Exception <> 0 THEN
+				eMBStep := MU110Write;
+				udErr   := udErr + 1;
+			END_IF
+			END_IF
+		MU110Write:
+			TONMBDelay(IN := NOT TONMBDelay.Q,PT := tMBDelay);
+			IF TONMBDelay.Q THEN
+			IF NOT(oMB_16.Enable) THEN
+				(* подготавливаем данные для отправки *)
+				arMBuffer[0] := 0;
+				arMBuffer[1] := 0;
+				arMBuffer[1].0 := block[US_1].ContrOut.warmBath;
+				arMBuffer[1].1 := block[US_2].ContrOut.warmBath;
+				arMBuffer[1].2 := block[Wash].ContrOut.warmBath;
+				arMBuffer[1].3 := contr.heat_air;
+				arMBuffer[1].4 := TRUE;
+				arMBuffer[1].5 := contr.fan;
+				arMBuffer[1].6 := block[US_1].ContrOut.us;
+				arMBuffer[1].7 := block[US_2].ContrOut.us;
+			END_IF
+			
+			oMB_16(                            (*модбас функция 16*)
+				Enable    := TRUE,             (*разрешение работы блока*)
+				Mode      := MB_RTU,           (*режим передачи*)
+				DevAddr   := byMU110Address,   (*адрес*)
+				FirstAddr := 50,               (*регистр битовая маска входов*)
+				Quantity  := 1,                (*количество регистров*)
+				Buffer    := arMBuffer,        (*что передаем *)
+				ComHandle := stSettings.Port,  (*номер сом-порта*)
+				TimeOut   := tTimeOut,         (*таймаут*)
+				);
+
+			IF oMB_16.Complete THEN
+				IF oMB_16.Exception = 0 THEN
+					eMBStep := MV110Read;
+					udErr   := 0;
+				ELSE
+					eMBStep := MV110Read;
+					udErr   := udErr + 1;
+				END_IF
+				oMB_16(Enable := FALSE, Buffer := arMBuffer);
+			END_IF
+			END_IF
+	END_CASE
+END_IF
+END_ACTION
+

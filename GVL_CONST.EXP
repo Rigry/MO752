@@ -1,0 +1,19 @@
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @GLOBAL_VARIABLE_LIST := 'GVL_CONST' *)
+(* @PATH := '' *)
+(* @OBJECTFLAGS := '0, 8' *)
+(* @SYMFILEFLAGS := '2048' *)
+VAR_GLOBAL CONSTANT
+	iQtyD7Line: 		INT		:=25;		(*количество строк в расписании недельного таймера*)
+	iMaxSelScrParam: 	INT		:=26;		(*максимальное количество строк на экране выбора параметра*)
+	iStQty: 			INT		:=10;		(*количество шагов автоматической программы*)
+	tUSDelay: 			TIME	:=t#1m;		(*задержка повторной подачи питания на УЗГ*)
+	GlobalMaxRand: 		USINT	:=18;		(*количество рандомных значений и максимальное значение рандома*)
+END_VAR
+(* @OBJECT_END := 'GVL_CONST' *)
+(* @CONNECTIONS := GVL_CONST
+FILENAME : ''
+FILETIME : 0
+EXPORT : 0
+NUMOFCONNECTIONS : 0
+*)

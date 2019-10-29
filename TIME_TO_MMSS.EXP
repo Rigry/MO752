@@ -1,0 +1,29 @@
+
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '\/FUNv1' *)
+(* @OBJECTFLAGS := '0, 8' *)
+(* @SYMFILEFLAGS := '2048' *)
+FUNCTION TIME_TO_MMSS : STRING
+VAR_INPUT
+    t:       TIME;
+END_VAR
+VAR
+    minuta:  DWORD;
+    secunda: DWORD;
+END_VAR
+(* @END_DECLARATION := '0' *)
+TIME_TO_MMSS := ':';
+minuta       := TIME_TO_DWORD(t) / 60000;
+secunda      := TIME_TO_DWORD(t) / 1000 MOD 60;
+TIME_TO_MMSS := INSERT(TIME_TO_MMSS, DWORD_TO_STRING(minuta), 0);
+IF minuta < 100 THEN
+    TIME_TO_MMSS := CONCAT(' ', TIME_TO_MMSS);
+END_IF
+IF minuta < 10 THEN
+    TIME_TO_MMSS := CONCAT(' ', TIME_TO_MMSS);
+END_IF
+IF secunda < 10 THEN
+    TIME_TO_MMSS := CONCAT(TIME_TO_MMSS, '0');
+END_IF;
+TIME_TO_MMSS := CONCAT(TIME_TO_MMSS, DWORD_TO_STRING(secunda));
+END_FUNCTION

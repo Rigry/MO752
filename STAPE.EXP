@@ -1,0 +1,31 @@
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '\/Other' *)
+(* @OBJECTFLAGS := '0, 8' *)
+TYPE StAPE:
+(
+    Wait:=0,
+    WarmTank,
+    WarmBath,
+    FillFromTank,
+    US,
+    FiltrToTank,
+    DrainToTank,
+    FillFromNet,
+    US2,
+    FiltrToNet,
+    DrainToNet,
+    FillTank,
+    ManToNet,
+    ManToTank,
+    Skip,
+    Barb,
+    Barb_and_Filtr,
+    Dry,
+    DeGas,
+    Warning,
+    Pump,
+	Cooling,
+	Heating
+);
+END_TYPE
+(* @END_DECLARATION := '0' *)

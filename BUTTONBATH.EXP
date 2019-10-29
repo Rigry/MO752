@@ -1,0 +1,17 @@
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '\/BathFB' *)
+(* @OBJECTFLAGS := '0, 8' *)
+TYPE ButtonBath :
+STRUCT
+	Pusk:          BOOL;   (*Пуск цикла*)
+	PuskDrain:     BOOL;   (*Пуск слива*)
+	PuskFill:      BOOL;   (*Пуск наполнения*)
+	PuskPump:      BOOL;   (*Пуск насоса*)
+	PuskBubbles:   BOOL;   (*Пуск барботажа*)
+	Stop:          BOOL;   (*Стоп*)
+	StopDrain:     BOOL;   (*Стоп слива*)
+	StopFill:      BOOL;   (*Стоп наполнения*)
+	emStop:        BOOL;   (*Аварийная остановка*)
+END_STRUCT
+END_TYPE
+(* @END_DECLARATION := '0' *)

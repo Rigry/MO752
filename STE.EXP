@@ -1,0 +1,11 @@
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '\/BathFB' *)
+(* @OBJECTFLAGS := '0, 8' *)
+TYPE StE :
+(
+    on,
+    off1,
+    not_enabled
+);
+END_TYPE
+(* @END_DECLARATION := '0' *)

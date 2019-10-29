@@ -1,0 +1,30 @@
+
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '\/FBv1' *)
+(* @OBJECTFLAGS := '0, 8' *)
+(* @SYMFILEFLAGS := '2048' *)
+FUNCTION_BLOCK HYST
+VAR_INPUT
+    enable:        BOOL    := TRUE;
+    temInput:      REAL;
+    temperatura:   DWORD;
+    temperaturaH:  DWORD;
+END_VAR
+VAR_OUTPUT
+    nagrev:        BOOL;
+END_VAR
+VAR
+
+END_VAR
+(* @END_DECLARATION := '0' *)
+IF temInput<(DWORD_TO_REAL(temperatura)-(DWORD_TO_REAL(temperaturaH)/20)) THEN
+    nagrev:=TRUE;
+END_IF
+
+IF temInput>(DWORD_TO_REAL(temperatura)+(DWORD_TO_REAL(temperaturaH)/20)) THEN
+    nagrev:=FALSE;
+END_IF
+
+
+nagrev := nagrev AND enable;
+END_FUNCTION_BLOCK

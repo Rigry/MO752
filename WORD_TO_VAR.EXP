@@ -1,0 +1,15 @@
+
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '\/FUNv1' *)
+(* @OBJECTFLAGS := '0, 8' *)
+(* @SYMFILEFLAGS := '2048' *)
+FUNCTION WORD_TO_VAR : VarST
+VAR_IN_OUT
+    in : WORD;
+END_VAR
+VAR
+END_VAR
+(* @END_DECLARATION := '0' *)
+WORD_TO_VAR.pby   := ADR(in);
+WORD_TO_VAR.type_ := WORD_;
+END_FUNCTION

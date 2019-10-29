@@ -1,0 +1,12 @@
+(* @NESTEDCOMMENTS := 'Yes' *)
+(* @PATH := '\/BathFB' *)
+(* @OBJECTFLAGS := '0, 8' *)
+(*расположение нагревателя*)
+TYPE HeatPlaceE :
+(
+    US_1,
+    US_2,
+    Wash
+);
+END_TYPE
+(* @END_DECLARATION := '0' *)
