@@ -92,7 +92,7 @@ ELSE
 
 	sens.button.emStop			:= bDInput1;
 
-	sens.level[BathLower, US_1]	:= mbA2.0;
+	(*sens.level[BathLower, US_1]	:= mbA2.0;
 	sens.level[BathLower, US_2]	:= mbA2.1;
 	sens.level[BathLower, Wash]	:= mbA2.2;
 	sens.button.pusk[US_1]		:= mbA2.4;
@@ -100,7 +100,7 @@ ELSE
 	sens.button.pusk[US_2]		:= mbA2.6;
 	sens.button.stop[US_2]		:= mbA2.7;
 	sens.button.pusk_dry		:= mbA2.8;
-	(*sens.button.stop_dry		:= mbA2.9;*)
+	sens.button.stop_dry		:= mbA2.9;*)
 
 	(*назначение входов ванн*)
 	FOR i := US_1 TO Wash DO
